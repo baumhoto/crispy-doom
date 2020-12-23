@@ -41,7 +41,6 @@ static void DrawSoundInfo(void);
 static void ShadeLine(int x, int y, int height, int shade);
 static void ShadeChain(void);
 static void DrINumber(signed int val, int x, int y);
-static void DrBNumber(signed int val, int x, int y);
 static void DrawCommonBar(void);
 static void DrawMainBar(void);
 static void DrawInventoryBar(void);
@@ -336,42 +335,68 @@ static void DrINumber(signed int val, int x, int y)
     V_DrawPatch(x + 18, y, patch);
 }
 
+
 //---------------------------------------------------------------------------
 //
-// PROC DrBNumber
+// PROC DrINumber
 //
-// Draws a three digit number using FontB
+// Draws a three digit number.
 //
 //---------------------------------------------------------------------------
 
-static void DrBNumber(signed int val, int x, int y)
+static void DrINumberCentered(signed int val, int x, int y)
 {
     patch_t *patch;
-    int xpos;
     int oldval;
+    int type = 0;
 
     oldval = val;
-    xpos = x;
     if (val < 0)
     {
-        val = 0;
+        if (val < -9)
+        {
+            V_DrawPatch(x + 1, y + 1, W_CacheLumpName(DEH_String("LAME"), PU_CACHE));
+        }
+        else
+        {
+            val = -val;
+            V_DrawPatch(x + 18, y, PatchINumbers[val]);
+            V_DrawPatch(x + 9, y, PatchNEGATIVE);
+        }
+        return;
     }
     if (val > 99)
     {
-        patch = W_CacheLumpNum(FontBNumBase + val / 100, PU_CACHE);
-        V_DrawShadowedPatch(xpos + 6 - SHORT(patch->width) / 2, y, patch);
+        patch = PatchINumbers[val / 100];
+        V_DrawPatch(x-9, y, patch);
+        type = 3;
     }
     val = val % 100;
-    xpos += 12;
     if (val > 9 || oldval > 99)
     {
-        patch = W_CacheLumpNum(FontBNumBase + val / 10, PU_CACHE);
-        V_DrawShadowedPatch(xpos + 6 - SHORT(patch->width) / 2, y, patch);
+        patch = PatchINumbers[val / 10];
+        if (type == 3)
+        {
+            V_DrawPatch(x, y, patch);
+        }
+        else {
+            type = 2;
+            V_DrawPatch(x - 4, y, patch);
+        }
     }
     val = val % 10;
-    xpos += 12;
-    patch = W_CacheLumpNum(FontBNumBase + val, PU_CACHE);
-    V_DrawShadowedPatch(xpos + 6 - SHORT(patch->width) / 2, y, patch);
+    patch = PatchINumbers[val];
+    if (type == 3)
+    {
+            V_DrawPatch(x + 9, y, patch);
+    }
+    else if (type == 2)
+    {
+        V_DrawPatch(x + 4, y, patch);
+    }
+    else {
+        V_DrawPatch(x, y, patch);
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -936,14 +961,16 @@ void DrawFullScreenStuff(void)
     int temp;
 
     UpdateState |= I_FULLSCRN;
+    V_DrawPatch(13, 212, W_CacheLumpName(DEH_String("ptn1a0"), PU_CACHE));
     if (CPlayer->mo->health > 0)
     {
-        DrBNumber(CPlayer->mo->health, 5, 180);
+        DrINumberCentered(CPlayer->mo->health, 10, 188);
     }
     else
     {
-        DrBNumber(0, 5, 180);
+        DrINumberCentered(0, 10, 188);
     }
+
     if (deathmatch)
     {
         temp = 0;
@@ -964,6 +991,36 @@ void DrawFullScreenStuff(void)
             V_DrawTLPatch(286, 170, W_CacheLumpName(DEH_String("ARTIBOX"), PU_CACHE));
             V_DrawPatch(286, 170, W_CacheLumpName(patch, PU_CACHE));
             DrSmallNumber(CPlayer->inventory[inv_ptr].count, 307, 192);
+        }
+
+        if (CPlayer->armorpoints > 0)
+        {
+            V_DrawPatch(58, 204, W_CacheLumpName(DEH_String("shlda0"), PU_CACHE));
+            DrINumberCentered(CPlayer->armorpoints, 54, 188);
+        }
+
+        // Keys
+        if (CPlayer->keys[key_yellow])
+        {
+            V_DrawPatch(242, 176, W_CacheLumpName(DEH_String("ykeyicon"), PU_CACHE));
+        }
+        if (CPlayer->keys[key_green])
+        {
+            V_DrawPatch(242, 184, W_CacheLumpName(DEH_String("gkeyicon"), PU_CACHE));
+        }
+        if (CPlayer->keys[key_blue])
+        {
+            V_DrawPatch(242, 192, W_CacheLumpName(DEH_String("bkeyicon"), PU_CACHE));
+        }
+
+        // Ammo
+        temp = CPlayer->ammo[wpnlev1info[CPlayer->readyweapon].ammo];
+        if (temp && CPlayer->readyweapon > 0 && CPlayer->readyweapon < 7)
+        {
+            V_DrawPatch(256, 174,
+                        W_CacheLumpName(DEH_String(ammopic[CPlayer->readyweapon - 1]),
+                                        PU_CACHE));
+            DrINumberCentered(temp, 264, 188);
         }
     }
     else
